@@ -1,13 +1,13 @@
 <div align="center">
-  <img alt="Solana" src="https://raw.githubusercontent.com/solana-labs/solana/master/docs/static/img/solanaLogoMark.svg" height="40" />
+  <img alt="Solana" src="https://i.imgur.com/OMnvVEz.png" height="40" />
   &nbsp;&nbsp;
-  <img alt="Anchor" src="https://raw.githubusercontent.com/coral-xyz/anchor/master/logo.png" height="40" />
+  <img alt="Anchor" src="https://media.tekpon.com/2022/11/Anchor-Logo.webp" height="40" />
   &nbsp;&nbsp;
   <img alt="Rust" src="https://www.rust-lang.org/static/images/rust-logo-blk.svg" height="40" />
   &nbsp;&nbsp;
   <img alt="TypeScript" src="https://raw.githubusercontent.com/remojansen/logo.ts/master/ts.png" height="40" />
   <br/>
-  <h2>Testing - Token-2022 Transfer-Fee Demo (Anchor)</h2>
+  <h2>Token-2022 Transfer-Fee Demo (Anchor)</h2>
   <p>Solana program demonstrating Token-2022 mint init with transfer fee, mint, transfer, and withdraw withheld fees.</p>
 </div>
 
@@ -120,10 +120,3 @@ Open them in a browser to inspect each transaction on Solscan.
   ```
 - Token-2022 requires using the Token-2022 program ID for mint/ATA ops.
 - The `withdraw` instruction requires creator authority and a list of accounts to collect withheld fees from.
-
----
-
-### License
-ISC
-
-
