@@ -21,4 +21,8 @@ pub mod testing {
     pub fn transfer(ctx: Context<TransferContext>, amount: u64) -> Result<()>{
         _transfer(ctx, amount)
     }
+
+    pub fn withdraw(ctx: Context<WithdrawContext>, amount: u64) -> Result<()>{
+        _withdraw(ctx, amount)
+    }
 }

@@ -1,36 +1,32 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-    token_2022::{ mint_to, MintTo }
+    associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface, WithdrawWithheldTokensFromAccounts, withdraw_withheld_tokens_from_accounts}
 };
 
-pub fn _mint(ctx: Context<MintContext>, amount: u64) -> Result<()> {
-    if amount == 0 {
-        panic!("Invalid Amount");
-    }
-
+pub fn _withdraw(ctx: Context<WithdrawContext>, _amount: u64) -> Result<()> {
     let token_program = &ctx.accounts.token_program;
-    let creator = &ctx.accounts.creator;
+    let creator_ata = &ctx.accounts.creator_ata;
+    let creator = ctx.accounts.creator.clone();
     let mint = &ctx.accounts.mint;
-    let receipent_ata = &ctx.accounts.recipient_ata;
+    let from_ata = &ctx.accounts.from_ata;
 
-    let mint_ctx = CpiContext::new(
+    let withdraw_ctx = CpiContext::new(
         token_program.to_account_info(),
-        MintTo {
-            authority: creator.to_account_info(),
+        WithdrawWithheldTokensFromAccounts {
+            token_program_id: token_program.to_account_info(),
             mint: mint.to_account_info(),
-            to: receipent_ata.to_account_info(),
+            destination: creator_ata.to_account_info(),
+            authority: creator.to_account_info()
         },
     );
 
-    mint_to(mint_ctx, amount)?;
+    withdraw_withheld_tokens_from_accounts(withdraw_ctx, vec![from_ata.to_account_info()])?;
 
     Ok(())
 }
 
 #[derive(Accounts)]
-pub struct MintContext<'info> {
+pub struct WithdrawContext<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
@@ -40,19 +36,24 @@ pub struct MintContext<'info> {
         mint::token_program = token_program,
     )]
     pub mint: InterfaceAccount<'info, Mint>,
+    /// CHECK: Account from which tokens will be withdrawn
+    pub from: UncheckedAccount<'info>,
 
-    /// CHECK: Recipient of the minted tokens
-    pub recipient: UncheckedAccount<'info>,
-
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = from,
+        associated_token::token_program = token_program,
+    )]
+    pub from_ata: InterfaceAccount<'info, TokenAccount>,
     #[account(
         init_if_needed,
         payer = creator,
         associated_token::mint = mint,
-        associated_token::authority = recipient,
+        associated_token::authority = creator,
         associated_token::token_program = token_program,
     )]
-    pub recipient_ata: InterfaceAccount<'info, TokenAccount>,
-
+    pub creator_ata: InterfaceAccount<'info, TokenAccount>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,

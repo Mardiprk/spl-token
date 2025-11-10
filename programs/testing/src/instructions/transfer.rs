@@ -6,7 +6,7 @@ use anchor_spl::{
 };
 
 pub fn _transfer(ctx: Context<TransferContext>, amount: u64) -> Result<()> {
-    require!(amount == 0, ErrorCode::InvalidAmount);
+    require!(amount > 0, ErrorCode::InvalidAmount);
 
     let token_program = &ctx.accounts.token_program;
     let sender = &ctx.accounts.sender;
