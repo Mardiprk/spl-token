@@ -4,10 +4,9 @@ import { Testing } from "../target/types/testing";
 import {
   TOKEN_2022_PROGRAM_ID,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
   getAccount,
 } from "@solana/spl-token";
-import { Keypair, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Keypair, SystemProgram } from "@solana/web3.js";
 import { expect } from "chai";
 
 describe("testing", () => {
@@ -16,35 +15,11 @@ describe("testing", () => {
   const program = anchor.workspace.Testing as Program<Testing>;
 
   let mint: Keypair;
-  let creator: Keypair;
-  let recipient: Keypair;
-  let sender: Keypair;
-
-  before(async () => {
-    // Airdrop SOL to creator
-    creator = Keypair.generate();
-    const signature = await provider.connection.requestAirdrop(
-      creator.publicKey,
-      2 * LAMPORTS_PER_SOL
-    );
-    await provider.connection.confirmTransaction(signature);
-
-    // Airdrop SOL to recipient
-    recipient = Keypair.generate();
-    const signature2 = await provider.connection.requestAirdrop(
-      recipient.publicKey,
-      2 * LAMPORTS_PER_SOL
-    );
-    await provider.connection.confirmTransaction(signature2);
-
-    // Airdrop SOL to sender
-    sender = Keypair.generate();
-    const signature3 = await provider.connection.requestAirdrop(
-      sender.publicKey,
-      2 * LAMPORTS_PER_SOL
-    );
-    await provider.connection.confirmTransaction(signature3);
-  });
+  // Use provider wallet as creator and sender to avoid devnet airdrop issues
+  const wallet = provider.wallet as anchor.Wallet;
+  const creatorPubkey = wallet.publicKey;
+  const senderPubkey = wallet.publicKey;
+  const recipientPubkey = Keypair.generate().publicKey;
 
   it("Initializes the mint with transfer fee", async () => {
     mint = Keypair.generate();
@@ -54,15 +29,15 @@ describe("testing", () => {
     const tx = await program.methods
       .initialize(feeBps, new anchor.BN(maxFee))
       .accounts({
-        creator: creator.publicKey,
+        creator: creatorPubkey,
         mint: mint.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       } as any)
-      .signers([creator, mint])
+      .signers([mint])
       .rpc();
 
-    console.log("Initialize transaction:", tx);
+    console.log(`https://solscan.io/tx/${tx}?cluster=devnet`);
     expect(tx).to.be.a("string");
   });
 
@@ -71,7 +46,7 @@ describe("testing", () => {
 
     const recipientAta = getAssociatedTokenAddressSync(
       mint.publicKey,
-      recipient.publicKey,
+      senderPubkey,
       false,
       TOKEN_2022_PROGRAM_ID
     );
@@ -79,18 +54,17 @@ describe("testing", () => {
     const tx = await program.methods
       .mint(amount)
       .accounts({
-        creator: creator.publicKey,
+        creator: creatorPubkey,
         mint: mint.publicKey,
-        recipient: recipient.publicKey,
+        recipient: senderPubkey,
         recipientAta: recipientAta,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
       } as any)
-      .signers([creator])
       .rpc();
 
-    console.log("Mint transaction:", tx);
+    console.log(`https://solscan.io/tx/${tx}?cluster=devnet`);
 
     // Verify balance
     const account = await getAccount(
@@ -107,53 +81,41 @@ describe("testing", () => {
 
     const senderAta = getAssociatedTokenAddressSync(
       mint.publicKey,
-      sender.publicKey,
+      senderPubkey,
       false,
       TOKEN_2022_PROGRAM_ID
     );
 
     const recipientAta = getAssociatedTokenAddressSync(
       mint.publicKey,
-      recipient.publicKey,
+      recipientPubkey,
       false,
-      TOKEN_2022_PROGRAM_ID
-    );
-
-    // Create sender ATA if needed
-    const createAtaIx = createAssociatedTokenAccountInstruction(
-      sender.publicKey,
-      senderAta,
-      sender.publicKey,
-      mint.publicKey,
       TOKEN_2022_PROGRAM_ID
     );
 
     const tx = await program.methods
       .transfer(transferAmount)
       .accounts({
-        sender: recipient.publicKey,
+        sender: senderPubkey,
         mint: mint.publicKey,
-        recipient: sender.publicKey,
-        recipientAta: senderAta,
-        senderAta: recipientAta,
+        recipient: recipientPubkey,
+        recipientAta: recipientAta,
+        senderAta: senderAta,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
       } as any)
-      .preInstructions([createAtaIx])
-      .signers([recipient])
       .rpc();
 
-    console.log("Transfer transaction:", tx);
+    console.log(`https://solscan.io/tx/${tx}?cluster=devnet`);
 
     // Verify sender balance
     const senderAccount = await getAccount(
       provider.connection,
-      senderAta,
+      recipientAta,
       "confirmed",
       TOKEN_2022_PROGRAM_ID
     );
     expect(Number(senderAccount.amount)).to.be.greaterThan(0);
-    console.log("Sender balance:", senderAccount.amount.toString());
   });
 });
